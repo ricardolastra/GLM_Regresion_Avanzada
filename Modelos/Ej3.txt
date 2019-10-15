@@ -1,0 +1,14 @@
+model
+{
+#Likelihood
+for (i in 1:n) {
+	y[i] ~ dnorm(mu[i],tau) #medias miu y precision tau
+	mu[i]<-beta[1]+beta[2]*x[i] #le asigno la combinacion de betas por fuera
+	}
+#Priors #anotaciones y recomendaciones
+#for (j in 1:2) { beta[j] ~ dnorm(0,0.001) } #dist inicial normal
+for (j in 1:2) { beta[j] ~ ddexp(0,0.001) } #ajusta mejor, tiene menor DIC, dist inicial doble exponencial de laplace
+tau ~ dgamma(0.001,0.001) #cuando no me brindan dist. iniciales, usamos dist. iniciales vagas, si los subo penalizo mis coeficientes
+#Prediction
+for (i in 1:n) { yf[i] ~ dnorm(mu[i],tau) } #de los mismos puntos que tengo
+}

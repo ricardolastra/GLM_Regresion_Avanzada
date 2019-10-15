@@ -1,0 +1,289 @@
+---
+title: "Examen1"
+author: "Ricardo Lastra - 160167"
+date: "10 de Noviembre del 2017"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r, include=FALSE}
+library(mrbsizeR)
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+&nbsp;
+
+```{r fig.width=6, fig.height=4,echo=TRUE, fig.align = "center",warning=F, error=F, message=F}
+#install.packages("tidyverse")
+library(tidyverse)
+library(gtools)
+wdir<-"c:/Users/FORANEA110/Desktop/REGRESION_AVANZADA"
+setwd(wdir)
+
+#Leemos datos
+muerte<-read.table("http://allman.rhon.itam.mx/~lnieto/index_archivos/Mortalidad.csv",sep=",",header=TRUE)
+n<-nrow(muerte)
+colnames(muerte)
+
+#Variables explicativas.
+x_mean<-mutate(muerte, Mean = rowMeans(select(muerte,Edad.Inf,Edad.Sup), na.rm = TRUE))
+x<-x_mean$Mean
+yh<-logit(muerte$Muertes.H/muerte$Expuestos.H)
+ym<-logit(muerte$Muertes.M/muerte$Expuestos.M)
+```
+
+&nbsp;
+
+```{r fig.width=6, fig.height=4,echo=TRUE, fig.align = "center",warning=F, error=F, message=F}
+#Graficas
+plot(x)
+abline(v=10,col="red")
+plot(yh)
+abline(v=10,col="red")
+plot(ym)
+abline(v=10,col="red")
+plot(x,ym,type="l")
+abline(v=65,col="red") #el punto medio entre 15 y 100 es 65....pintamos la linea en rojo para ver a partir de cuando la pendiente sube
+
+```
+&nbsp;
+
+#####INCISO A
+
+     La variable "x" que indica que existe un incremento de edad constante, por ello se visualiza una diagonal con pendiente continua positiva.
+    La relacion con cada "y" para hombres y mujeres es que las defunciones entre personas expuestas aumentan con la edad aparentemente de forma cosntante con pendiente positiva mas grande a partir de la edad media de una persona.
+    
+&nbsp;
+
+#####INCISO B HOMBRES
+
+&nbsp;
+
+```{r fig.width=6, fig.height=4,echo=TRUE, fig.align = "center",warning=F, error=F, message=F}
+#------------------------------------------------------INCISO B 
+#install.packages("R2jags")
+library(R2jags)
+
+#Datos HOMBRES
+datah<-list("n"=n,"y"=yh,"x"=x)
+
+##Inits
+inits<-function(){list(alpha=0,beta=0,tau=1,yf1=rep(0,n))}
+#parametros
+parameters<-c("alpha","beta","tau","yf1")
+#Modelo HOMBRES
+h.sim<-jags(datah,inits,parameters,model.file="modelo1.txt",
+               n.iter=50000,n.chains=1,n.burnin=5000,n.thin=1)
+
+#DIC HOMBRES
+out.dic.h<-h.sim$BUGSoutput$DIC
+print("El DIC de Hombres es:")
+print(out.dic.h)
+
+
+#Predicciones hombres
+#JAGS
+out.sum.h.1<-h.sim$BUGSoutput$summary
+out.yf.h<-out.sum.h.1[grep("yf",rownames(out.sum.h.1)),]
+
+#Pseudo Rcuadrada hombres
+R2 <- (cor(yh,out.yf.h[,1]))^2
+print("La Pseudo R2 de Hombres es:")
+print(R2)
+```
+
+    Los estimadores para  este modelo son buenos, con buenos niveles de DIC  y predicciones. Recordemos que los objetivos del modelo de regresion son utilizar la informacion de las variables "x's"  y "y's" observadas para estimar los parametros del modelo.
+    
+    Queremos estimar los parametros para determinar si una de las variables explicativas tiene un efecto significativo sobre mis respuestas. Los coeficientes significativos deben ser distintos de "0". Para esto hacemos pruebas de hipotesis (H).
+
+    Otro objetivo de la regresion es predecir observaciones futuras.
+
+&nbsp;
+
+#####INCISO B MUJERES
+
+&nbsp;
+
+```{r fig.width=6, fig.height=4,echo=TRUE, fig.align = "center",warning=F, error=F, message=F}
+#------------------------------------------------------INCISO B
+#Datos MUJERES
+datam<-list("n"=n,"y"=ym,"x"=x)
+#Inits
+inits<-function(){list(alpha=0,beta=0,tau=1,yf1=rep(0,n))}
+#parametros
+parameters<-c("alpha","beta","tau","yf1")
+
+#Modelo MUJERES
+m.sim<-jags(datam,inits,parameters,model.file="modelo1.txt",
+            n.iter=50000,n.chains=1,n.burnin=5000,n.thin=1)
+##DIC HMUJERES
+out.dic.m<-m.sim$BUGSoutput$DIC
+print("El DIC de Mujeres es:")
+print(out.dic.m)
+
+#Predicciones Mujeres
+out.sum.m.1<-m.sim$BUGSoutput$summary
+out.yf.m<-out.sum.m.1[grep("yf1",rownames(out.sum.m.1)),]
+
+#Pseudo Rcuadrada Mujeres
+R2 <- (cor(ym,out.yf.m[,1]))^2
+print("La Pseudo R2 de Muejeres es:")
+print(R2)
+```
+&nbsp;
+
+    R^2 se llama coeficiente de determinacion. Para el modelo de regresión, la suma de cuadrados de la regresion entre la suma de cuadrados totales. Se interpretaba como el % de variabilidad explicada por el modelo, depende de una particion de suma de cuadrados totales.
+
+    DIC. Criterio de información Devianza.
+
+
+&nbsp;
+
+#####INCISO C
+
+&nbsp;
+
+```{r fig.width=6, fig.height=4,echo=TRUE, fig.align = "center",warning=F, error=F, message=F}
+zh<-muerte$Muertes.H/muerte$Expuestos.H
+zm<-muerte$Muertes.M/muerte$Expuestos.M
+
+#Diagrama de dispersion Hombres
+plot(x,zh)
+abline(v=65,col="red") #el punto medio entre 15 y 100 es 65....pintamos la linea en rojo para ver a partir de cuando la pendiente sube
+
+#Diagrama de dispersion Mujeres
+plot(x,zm)
+abline(v=65,col="red") #el punto medio entre 15 y 100 es 65....pintamos la linea en rojo para ver a partir de cuando la pendiente sube
+```
+
+&nbsp;
+
+#####INCISO D HOMBRES
+
+&nbsp;
+
+```{r fig.width=6, fig.height=4,echo=TRUE, fig.align = "center",warning=F, error=F, message=F}
+yh<-muerte$Muertes.H
+nh<-muerte$Expuestos.H
+#Datos HOMBRES
+data<-list("n"=n,"y"=yh,"x"=x,"ne"=nh)
+#Inits
+inits<-function(){list(beta=rep(0,2),yf1=rep(0,n))}
+#parametros
+parameters<-c("beta","p", "yf1")
+#Modelo HOMBRES
+h.sim<-jags(data,inits,parameters,model.file="modelo2.txt",
+            n.iter=50000,n.chains=1,n.burnin=5000,n.thin=1)
+
+#DIC HOMBRES
+out.dic<-h.sim$BUGSoutput$DIC
+print("El DIC de Hombres es:")
+print(out.dic)
+
+#Predicciones hombres
+#JAGS
+out.sum.h<-h.sim$BUGSoutput$summary
+out.yf.h<-out.sum.h[grep("yf",rownames(out.sum.h)),]
+
+#Pseudo Rcuadrada hombres
+R2 <- (cor(yh,out.yf.h[,1]))^2
+print("La Pseudo R2 de Hombres es:")
+print(R2)
+
+
+#Funcion de Probabilidad
+prob <- function(x){
+  out <- min(length(x[x>0])/length(x),length(x[x<0])/length(x))
+  out
+}
+
+out<-h.sim$BUGSoutput$sims.list
+
+#Tabla de estimadores por intervalo
+out.sum.t<-out.sum.h[grep("beta",rownames(out.sum.h)),c(1,3,7)]
+out.sum.t<-cbind(out.sum.t,apply(out$beta,2,prob))
+dimnames(out.sum.t)[[2]][4]<-"prob"
+print(out.sum.t)
+```
+
+&nbsp;
+
+#####INCISO D MUEJRES
+
+&nbsp;
+
+```{r fig.width=6, fig.height=4,echo=TRUE, fig.align = "center",warning=F, error=F, message=F}
+ym<-muerte$Muertes.M
+nm<-muerte$Expuestos.M
+
+#Datos MUJERES
+data<-list("n"=n,"y"=ym,"x"=x,"ne"=nm)
+#Inits
+inits<-function(){list(beta=rep(0,2),yf1=rep(0,n))}
+#parametros
+parameters<-c("beta","p", "yf1")
+
+#Modelo MUJERES
+m.sim<-jags(data,inits,parameters,model.file="modelo2.txt",
+            n.iter=50000,n.chains=1,n.burnin=5000,n.thin=1)
+
+#DIC MUJERES
+out.dic.m<-m.sim$BUGSoutput$DIC
+print("El DIC de Mujeres es:")
+print(out.dic.m)
+
+#Predicciones Mujeres
+#JAGS
+out.sum.m<-m.sim$BUGSoutput$summary
+out.yf.m<-out.sum.m[grep("yf",rownames(out.sum.m)),]
+
+#Pseudo Rcuadrada  Mujeres
+R2 <- (cor(ym,out.yf.m[,1]))^2
+print("La Pseudo R2 de Mujeres es:")
+print(R2)
+
+#Estimadores puntuales por intervalo:
+out.sum.m<-m.sim$BUGSoutput$summary
+
+#Funcion de Probabilidad
+prob <- function(x){
+  out <- min(length(x[x>0])/length(x),length(x[x<0])/length(x))
+  out
+}
+
+out<-m.sim$BUGSoutput$sims.list
+
+#Tabla de estimadores por intervalo
+out.sum.t<-out.sum.m[grep("beta",rownames(out.sum.m)),c(1,3,7)]
+out.sum.t<-cbind(out.sum.t,apply(out$beta,2,prob))
+dimnames(out.sum.t)[[2]][4]<-"prob"
+print(out.sum.t)
+```
+
+    Como lo dijimos antes R^2 se llama coeficiente de determinacion. Para el modelo de regresión, la suma de cuadrados de la regresion entre la suma de cuadrados totales. Entonces el modelo D es mejor ya que ajusta mejor las predicciones y el valor de la R^2 es mas elevado. 
+
+
+&nbsp;
+
+#####INCISO E
+
+&nbsp;
+
+```{r fig.width=6, fig.height=4,echo=TRUE, fig.align = "center",warning=F, error=F, message=F}
+#JAGS
+out.sum.h<-h.sim$BUGSoutput$summary
+out.yf.h<-out.sum.h[grep("yf",rownames(out.sum.h)),]
+yh<-muerte$Muertes.H
+ymin<-min(yh,out.yf.h[,c(1,3,7)])
+ymax<-max(yh,out.yf.h[,c(1,3,7)])
+
+par(mfrow=c(1,1))
+plot(yh,type="l",col="grey80",ylim=c(ymin,ymax))
+abline(h=50,col="red")
+```
+
+&nbsp;

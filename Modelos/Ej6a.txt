@@ -1,0 +1,25 @@
+model
+{
+#Likelihood
+for (i in 1:n) {
+#Neg Binomial
+#	y[i] ~ dnegbin(p[i],r)
+#	logit(p[i])<-beta[1]+beta[2]*x[i]
+#	mu[i]<-r*(1-p[i])/p[i]
+#	}
+#Poisson
+	y[i] ~ dpois(mu[i])
+	log(mu[i])<-beta[1]+beta[2]*x[i]
+	}
+#Priors 
+for (j in 1:2) { beta[j] ~ dnorm(0,0.001) }
+#Neg Binomial
+#aux ~ dpois(50)
+#r <- aux + 1
+#Prediction 1
+#Neg Binomial
+#for (i in 1:n) { yf1[i] ~ dnegbin(p[i],r) }
+#Poisson
+for (i in 1:n) { yf1[i] ~ dpois(mu[i]) }
+
+}

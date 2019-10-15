@@ -1,0 +1,17 @@
+model
+{
+#Likelihood
+for (i in 1:n) {
+	y[i] ~ dgamma(alpha,betast[i])
+	betast[i] <- alpha/mu[i]
+	log(mu[i]) <- intercept + x[i,] %*% beta
+	}
+#Priors 
+intercept ~ dnorm(0.0001,0.0001)
+for (j in 1:11) { beta[j] ~ dnorm(0,0.001) }
+alpha ~ dgamma(1,1)
+#Prediction
+for (i in 1:n) {
+	yf[i] ~ dgamma(alpha,betast[i])
+	}
+}

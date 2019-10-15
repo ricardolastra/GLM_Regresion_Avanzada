@@ -1,0 +1,157 @@
+---
+title: "Ejercicio 1"
+author: "Ricardo Lastra - 160167"
+date: "10 de Noviembre de 2017"
+output:
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+library(mrbsizeR)
+```
+
+&nbsp;
+
+#### EJERCICIO 1
+
+Sea  la tasa de créditos hipotecarios otorgados por un banco. Durante
+el 2004 la tasa promedio fue de 60% y la desviación estándar de la tasa
+fue de 0.04. En lo que va del año 2005 se han solicitado 100 créditos, de
+los cuales se han otorgado únicamente 50. 
+PROFESOR: LUIS E. NIETO BARAJAS
+44
+Maestría en ciencia de datos Regresión Avanzada
+a) Usando la información del año pasado, encuentra la distribución beta
+que mejor describe el conocimiento inicial.
+b) Usando la información del año pasado, encuentra la distribución
+normal transformada que mejor describa el conocimiento inicial.
+c) Determina la distribución inicial de referencia.
+d) Usando los datos del año 2005 encuentra la distribución final para
+cada una de las distribuciones iniciales de los incisos (a) – (c).
+e) Estima la tasa de créditos otorgados, usando las 3 distribuciones
+finales del inciso (d).
+f) Estima el momio de otorgar un crédito, i.e.,   /(1), usando las
+3 distribuciones finales del inciso (d). 
+
+&nbsp;
+
+#### INCISO a), b), c)
+
+&nbsp;
+
+```{r fig.width=6, fig.height=4,echo=TRUE, fig.align = "center", warning=F, error=F, message=F}
+#By Ricardo Lastra
+#Usamos en este ejercicio R2Jags
+#install.packages("R2jags")
+library(R2jags)
+
+wdir<-getwd()
+setwd(wdir)
+
+#-Reading data-
+n<-10
+#credito<-c(rep(1,n/2),rep(0,n/2))
+credito<-c(rep(1,n*0.9),rep(0,n*0.1)) #Es el mejor ajuste ya que los valores DIC son los mas pequeños.
+#credito<-c(rep(0,n*0.9),rep(1,n*0.1))
+
+#-Defining data-
+data<-list("n"=n,"x"=credito)
+#-Defining inits-
+#inits<-function(){list(theta=0.5,x1=rep(1,2))} #inciso a
+inits<-function(){list(lambda=0)} #inciso b
+
+#-Selecting parameters to monitor-
+parameters<-c("theta","x1") #inciso a y b
+```
+
+Notas:
+
+Objetivos del modelo de regresion. Utilizar la informacion de las variables "x's"  y "y's" observadas para estimar los parametros del modelo.
+
+Parametros son en este caso theta.
+
+Queremos estimar los parametros para determinar si una de las variables explicativas tiene un efecto significativo sobre mis respuestas. Los coeficientes significativos deben ser distintos de "0". Para esto hacemos pruebas de hipotesis (H).
+
+Otro objetivo de la regresion es predecir observaciones futuras.
+
+&nbsp;
+
+Algoritmo `theta ~ beta`:
+
+```{r fig.width=6, fig.height=4,echo=TRUE, fig.align = "center",warning=F, error=F, message=F}
+#JAGS
+ej1.sim<-jags(data,inits,parameters,model.file="Ej1.txt",
+              n.iter=5000,n.chains=1,n.burnin=500,n.thin=1)
+```
+
+Usando:
+
+Verosimilitud:
+
+Likelihood
+for (i in 1:n) {
+	x[i] ~ dbin(theta,1)
+	}
+
+Para las priors:
+
+Priors:
+
+Inciso a
+theta ~ dbeta(89.4,59.6)
+
+Inciso b
+theta <- exp(lambda)/(1+exp(lambda))
+lambda ~ dnorm(0.4054,33.33)
+
+Inciso c
+theta ~ dbeta(0.5,0.5)
+
+Para las predictivas:
+
+for (j in 1:2) {
+	x1[j] ~ dbin(theta,1)
+	}
+
+
+&nbsp;
+
+```{r fig.width=6, fig.height=4,echo=TRUE, fig.align = "center",warning=F, error=F, message=F}
+out<-ej1.sim$BUGSoutput$sims.list
+z<-out$theta
+par(mfrow=c(2,2))
+plot(z,type="l")
+plot(cumsum(z)/(1:length(z)),type="l")
+hist(z,freq=FALSE)
+acf(z)
+```
+
+
+&nbsp;
+
+```{r fig.width=6, fig.height=4,echo=TRUE, fig.align = "center",warning=F, error=F, message=F}
+out.sum<-ej1.sim$BUGSoutput$summary
+print(out.sum)
+```
+
+&nbsp;
+
+```{r fig.width=6, fig.height=4,echo=TRUE, fig.align = "center",warning=F, error=F, message=F}
+#DIC
+out.dic<-ej1.sim$BUGSoutput$DIC
+print(out.dic)
+```
+
+
+&nbsp;
+
+### Conclusiones:
+
+ 
+
+
+

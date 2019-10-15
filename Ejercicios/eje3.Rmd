@@ -1,0 +1,172 @@
+---
+title: "Ejercicio 3"
+author: "Ricardo Lastra - 160167"
+date: "10 de Noviembre de 2017"
+output:
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+library(mrbsizeR)
+```
+
+&nbsp;
+
+#### EJERCICIO 3
+
+A continuación se presenta una base de datos de
+calificaciones de 20 empresas financieras hechas por las dos compañías
+calificadores más importantes S&P y Moody’s. Realiza un análisis
+Bayesiano completo de los datos, ajustando un modelo de regresión lineal,
+tomando como variable respuesta las calificaciones de S&P y como
+variable explicativa las calificaciones de Moody’s. 
+
+&nbsp;
+
+####Normal y exponencial.
+
+&nbsp;
+
+```{r fig.width=6, fig.height=4,echo=TRUE, fig.align = "center", warning=F, error=F, message=F}
+#By Ricardo Lastra
+#Usamos en este ejercicio R2Jags
+#install.packages("R2jags")
+library(R2jags)
+
+wdir<-getwd()
+setwd(wdir)
+
+#-------Funciones utiles----------
+prob <- function(x){
+  out <- min(length(x[x>0])/length(x),length(x[x<0])/length(x))
+  out
+}
+
+#-Reading data-
+calif<-read.table("http://allman.rhon.itam.mx/~lnieto/index_archivos/calificaciones.txt",header=TRUE)
+n<-nrow(calif)
+plot(calif$MO,calif$SP)
+
+#-Defining data-
+data<-list("n"=n,"y"=calif$SP,"x"=calif$MO)
+
+#-Defining inits-
+inits<-function(){list(beta=rep(0,2),tau=1,yf=rep(0,n))} #tau si va en ambos modelos normal y exp
+
+#-Selecting parameters to monitor-
+parameters<-c("beta","tau","yf")
+```
+
+Notas:
+
+Objetivos del modelo de regresion. Utilizar la informacion de las variables "x's"  y "y's" observadas para estimar los parametros del modelo.
+
+Parametros son en este caso theta.
+
+Queremos estimar los parametros para determinar si una de las variables explicativas tiene un efecto significativo sobre mis respuestas. Los coeficientes significativos deben ser distintos de "0". Para esto hacemos pruebas de hipotesis (H).
+
+Otro objetivo de la regresion es predecir observaciones futuras.
+
+R^2 se llama coeficiente de determinacion. Para el modelo de regresión, la suma de cuadrados de la regresion entre la suma de cuadrados totales. Se interpretaba como el % de variabilidad explicada por el modelo, depende de una particion de suma de cuadrados totales.
+
+DIC. Criterio de información Devianza.
+
+&nbsp;
+
+Algoritmo `normal y doble exponencial`:
+
+```{r fig.width=6, fig.height=4,echo=TRUE, fig.align = "center",warning=F, error=F, message=F}
+#JAGS
+ej3.sim<-jags(data,inits,parameters,model.file="C:/Users/FORANEA110/Desktop/REGRESION_AVANZADA/Ej3.txt",
+              n.iter=10000,n.chains=1,n.burnin=1000,n.thin=1)
+
+```
+
+####Usando:
+
+####Verosimilitud:
+
+
+
+####Para las priors:
+
+for (j in 1:2) { beta[j] ~ dnorm(0,0.001) } `dist inicial normal`
+for (j in 1:2) { beta[j] ~ ddexp(0,0.001) }  `dist inicial doble exp` 
+
+
+####Para las predictivas:
+
+
+
+&nbsp;
+
+```{r fig.width=6, fig.height=4,echo=TRUE, fig.align = "center",warning=F, error=F, message=F}
+out<-ej3.sim$BUGSoutput$sims.list
+z<-out$beta[,2] #observo la beta2
+par(mfrow=c(2,2))
+plot(z,type="l")
+plot(cumsum(z)/(1:length(z)),type="l")
+hist(z,freq=FALSE)
+acf(z)
+```
+
+
+&nbsp;
+
+```{r fig.width=6, fig.height=4,echo=TRUE, fig.align = "center",warning=F, error=F, message=F}
+z<-out$beta
+par(mfrow=c(1,1))
+plot(z)
+```
+
+&nbsp;
+
+
+```{r fig.width=6, fig.height=4,echo=TRUE, fig.align = "center",warning=F, error=F, message=F}
+out.sum<-ej3.sim$BUGSoutput$summary
+#Tabla resumen
+out.sum.t<-out.sum[grep("beta",rownames(out.sum)),c(1,3,7)]
+out.sum.t<-cbind(out.sum.t,apply(out$beta,2,prob))
+dimnames(out.sum.t)[[2]][4]<-"prob"
+print(out.sum.t)
+```
+
+&nbsp;
+
+```{r fig.width=6, fig.height=4,echo=TRUE, fig.align = "center",warning=F, error=F, message=F}
+#DIC
+out.dic<-ej3.sim$BUGSoutput$DIC
+print(out.dic)  ####### EL MODELO CON MENOR DIC AJUSTA MEJOR#######
+```
+
+
+&nbsp;
+
+
+```{r fig.width=6, fig.height=4,echo=TRUE, fig.align = "center",warning=F, error=F, message=F}
+#Predictions
+out.yf<-out.sum[grep("yf",rownames(out.sum)),]
+or<-order(calif$MO)
+ymin<-min(calif$SP,out.yf[,c(1,3,7)])
+ymax<-max(calif$SP,out.yf[,c(1,3,7)])
+par(mfrow=c(1,1))
+
+plot(calif$MO,calif$SP,ylim=c(ymin,ymax))
+lines(calif$MO[or],out.yf[or,1],lwd=2,col=2)
+lines(calif$MO[or],out.yf[or,3],lty=2,col=2)
+lines(calif$MO[or],out.yf[or,7],lty=2,col=2)
+```
+
+
+&nbsp;
+
+### Conclusiones:
+
+ 
+
+
+

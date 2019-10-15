@@ -1,0 +1,358 @@
+---
+title: "Ejercicio 8"
+author: "Ricardo Lastra"
+date: "15 de Noviembre de 2017"
+output:
+  html_document: default
+---
+
+```{r, include=FALSE}
+library(mrbsizeR)
+```
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+&nbsp;
+
+Participación de mercado, promoción y precios (Congdon,
+2001). Se tiene una serie de tiempo semanal de la participación de mercado
+(St) de un producto de consumo, durante un período de dos años (1990-
+1991). El número total de observaciones es N104. Las fluctuaciones en la participación de mercado están relacionadas con (Pt) precio del producto
+relativo al promedio para esos productos, (OPROMt) índice del nivel de
+promoción del producto y (CPROMt) índice de productos competidores. El
+impacto en la participación de mercado debido a un aumento del precio y a
+un aumento de la promoción de la competencia debería de ser negativo,
+mientras que un aumento en la promoción del propio producto debería
+aumentar la participación del mercado. Se sugieren dos modelos para estos
+datos: 
+
+a) Modelo Estático:
+
+$$
+S_t =\beta_{0}+\beta_1P_t+\beta_2OPROM_t+\beta_3CPROM_t+\epsilon_{t},\epsilon_{t} \thicksim N(0,\tau)\\
+$$
+
+Las distribuciones iniciales sugeridas por Congdon (2001) son: 
+
+$$
+\beta_0 \thicksim N(42,0.04),\ \beta_1 \thicksim N(0,0.25),\ \beta_2 \thicksim N(0,0.25),\ \beta_3 \thicksim N(0,0.25)\\
+$$
+
+
+b) Modelo Dinámico
+
+&nbsp;
+
+$$
+S_t =\beta_{0t}+\beta_{1t}P_t+\beta_{2t}OPROM_t+\beta_{3t}CPROM_t+\epsilon_{t},\epsilon_{t} \thicksim N(0,V_t^{-1})\\
+\beta_{jt}=\beta_{jt-1}+\omega_{jt},\omega_{jt} \thicksim N(0,W_{jt}^{-1}),\ j=0,1,2,3\\
+V_{t}^{-1}=\delta^{t-1}V^{-1},\ t=1,2...\\
+W_{jt}^{-1}=(\delta_j)^{t-1}W_j^{-1},\ j=0,..,3\ y\ t=1,2,...
+$$
+
+donde $\delta$ y $\delta_j$ son factores de descuento de las varianzas observacional y de la evolucion de los parametros, respectivamente.
+
+Los valores de descuento sugeridos son:
+
+$$
+\delta=0.99,\ \delta_0=0.99,\ \delta_1=1,\ \delta_2=1,\ \delta_3=1.
+$$
+Las distribuciones iniciales son:
+
+$$
+\beta_{00} \thicksim N(42,0.04),\ \beta_{10} \thicksim N(0,0.25)I(\beta_{10}<0),\ \beta_{20} \thicksim N(0,0.25)I(\beta_{20}>0),\ \beta_{03} \thicksim N(0,0.25)I(\beta_{30}<0),\\ V^{-1} \thicksim Ga(0.5,0.5)\ y\ W_j^{-1} \thicksim Ga(1,1),j=0,...,3.\\
+$$
+
+```{r fig.width=6, fig.height=4,echo=TRUE, fig.align = "center", warning=F, error=F, message=F}
+#By Ricardo Lastra
+#install.packages("R2jags")
+library(R2jags)
+
+wdir<-getwd()
+setwd(wdir)
+
+#-------Funciones utiles----------
+prob <- function(x){
+  out <- min(length(x[x>0])/length(x),length(x[x<0])/length(x))
+  out
+}
+mercado<-read.table("http://allman.rhon.itam.mx/~lnieto/index_archivos/mercado.txt",header=TRUE)
+n<-nrow(mercado)
+mercado$Tiempo<-1:n
+pairs(mercado)
+data<-list("n"=n,"y"=scale(mercado$SHARE)[1:n],"x1"=scale(mercado$PRICE)[1:n],"x2"=scale(mercado$OPROM)[1:n],"x3"=scale(mercado$CPROM)[1:n])
+corre<-cor(mercado)
+#Grafica de correlación mas visual
+library(corrplot)
+corrplot(corre, method = "number")
+```
+
+&nbsp;
+
+Observamos que las variables mas correlacionadas son `Tiempo` y `SHARE` o **participación**. Tambien observamos que las variables con correlacion negativa son `SHARE` y `PRICE`, que como lo dice la hipotesis de que "el impacto en la participación de mercado debido a un aumento del precio y a un aumento de la promoción de la competencia debería de ser negativo", es decir con esas dos variables podemos ver que el precio aparentemente tiene un impacto negativo en la **participación** de mercado.
+
+
+&nbsp;
+
+### Ejercicio C)
+
+&nbsp;
+
+
+Obtener el DIC  con el modelo de ordenada estatica con pendientes dinamicas.
+
+
+&nbsp;
+
+
+Modelo:
+
+
+```{r fig.width=6, fig.height=4,echo=TRUE, fig.align = "center",warning=F, error=F, message=F}
+#Inits
+inits<-function(){list(alpha=0,beta=matrix(0,nrow=3,ncol=n),tau=1,yf1=rep(1,n))} #ejercico c
+#-Selecting parameters to monitor
+parameters<-c("alpha","beta","tau","yf1")
+#-Running code
+ej8c.sim<-jags(data,inits,parameters,model.file="Ej8c.txt",
+               n.iter=10000,n.chains=1,n.burnin=1000,n.thin=10)
+```
+
+&nbsp;
+
+
+```{r warning=F, error=F, message=F}
+#Usando:
+
+#model
+#{
+#Likelihood  C
+#for (i in 1:n) {
+#	y[i] ~ dnorm(mu[i],tau)
+#	mu[i]<-alpha+beta[1,i]*x1[i]+beta[2,i]*x2[i]+beta[3,i]*x3[i]
+#	}
+#State eq.
+#for (i in 2:n) {
+#for (j in 1:3) {
+#	beta[j,i] ~ dnorm(beta[j,i-1],tau.b[j])
+#	}
+#	}
+#Priors 
+#alpha ~ dnorm(0,0.001)
+#for (j in 1:3) { beta[j,1] ~ dnorm(0,0.001) }
+#tau ~ dgamma(0.001,0.001)
+#for (j in 1:3){
+#	tau.b[j]<- lam*tau
+#}
+#lam<-10
+
+#Prediction 1
+#for (i in 1:n) { yf1[i] ~ dnorm(mu[i],tau) }
+
+#}
+```
+
+
+&nbsp;
+
+```{r fig.width=6, fig.height=4,echo=TRUE, fig.align = "center",warning=F, error=F, message=F}
+out<-ej8c.sim$BUGSoutput$sims.list
+
+z<-out$alpha
+par(mfrow=c(2,2))
+plot(z,type="l")
+plot(cumsum(z)/(1:length(z)),type="l")
+hist(z,freq=FALSE)
+```
+
+&nbsp;
+
+
+```{r fig.width=6, fig.height=4,echo=TRUE, fig.align = "center",warning=F, error=F, message=F}
+#Resumen de estimadores
+out.sum<-ej8c.sim$BUGSoutput$summary
+
+#Tabla resumen
+out.sum.t<-out.sum[grep("beta",rownames(out.sum)),c(1,3,7)]
+out.sum.t<-cbind(out.sum.t,apply(out$beta,2,prob))
+dimnames(out.sum.t)[[2]][4]<-"prob"
+#print(out.sum.t)  Comentamos para evitar impresion de las 100 betas
+```
+
+&nbsp;
+
+```{r fig.width=6, fig.height=4,echo=TRUE, fig.align = "center",warning=F, error=F, message=F}
+#DIC
+out.dic<-ej8c.sim$BUGSoutput$DIC
+print(out.dic)
+```
+
+&nbsp;
+
+Predicciones:
+
+```{r fig.width=6, fig.height=4,echo=TRUE, fig.align = "center",warning=F, error=F, message=F}
+out.yf<-out.sum[grep("yf1",rownames(out.sum)),]
+y<-data$y
+ymin<-min(y,out.yf[,c(1,3,7)])
+ymax<-max(y,out.yf[,c(1,3,7)])
+
+#x1 vs. y
+x<-data$x1
+par(mfrow=c(1,1))
+plot(x,y,type="p",col="grey50",ylim=c(ymin,ymax))
+points(x,out.yf[,1],col=2,pch=16,cex=0.5)
+segments(x,out.yf[,3],x,out.yf[,7],col=2)
+```
+
+&nbsp;
+
+
+Medias:
+
+```{r fig.width=6, fig.height=4,echo=TRUE, fig.align = "center",warning=F, error=F, message=F}
+#x2 vs. y
+x<-data$x2
+par(mfrow=c(1,1))
+plot(x,y,type="p",col="grey50",ylim=c(ymin,ymax))
+points(x,out.yf[,1],col=2,pch=16,cex=0.5)
+segments(x,out.yf[,3],x,out.yf[,7],col=2)
+#x3 vs. y
+x<-data$x3
+par(mfrow=c(1,1))
+plot(x,y,type="p",col="grey50",ylim=c(ymin,ymax))
+points(x,out.yf[,1],col=2,pch=16,cex=0.5)
+segments(x,out.yf[,3],x,out.yf[,7],col=2)
+#t vs. y
+x<-mercado$Tiempo
+par(mfrow=c(1,1))
+plot(x,y,type="p",col="grey50",ylim=c(ymin,ymax))
+points(x,out.yf[,1],col=2,pch=16,cex=0.5)
+segments(x,out.yf[,3],x,out.yf[,7],col=2)
+```
+
+&nbsp;
+
+```{r fig.width=6, fig.height=4,echo=TRUE, fig.align = "center",warning=F, error=F, message=F}
+#betas
+out.beta<-out.sum[grep("beta",rownames(out.sum)),]
+plot(out.beta[1:104,1],type="l")
+abline(h=-1.0376912, col=2)
+plot(out.beta[105:208,1],type="l")
+plot(out.beta[209:312,1],type="l")
+```
+
+
+&nbsp;
+
+### Ejercicio D) Usando ordenada dinamica  con pendientes estaticas.
+
+
+&nbsp;
+
+
+```{r fig.width=6, fig.height=4,echo=TRUE, fig.align = "center",warning=F, error=F, message=F}
+#Inits
+inits<-function(){list(alpha=rep(0,n),beta=rep(0,3),tau=1,yf1=rep(1,n))} #ejercico d
+#ejercico d
+#-Running code
+ej8d.sim<-jags(data,inits,parameters,model.file="Ej8d.txt",
+               n.iter=10000,n.chains=1,n.burnin=1000,n.thin=1)
+```
+
+&nbsp;
+
+```{r echo=TRUE, fig.align = "center",warning=F, error=F, message=F}
+out<-ej8d.sim$BUGSoutput$sims.list
+z<-out$alpha
+par(mfrow=c(2,2))
+plot(z,type="l")
+plot(cumsum(z)/(1:length(z)),type="l")
+hist(z,freq=FALSE)
+```
+
+&nbsp;
+
+
+```{r fig.width=6, fig.height=4,echo=TRUE, fig.align = "center",warning=F, error=F, message=F}
+#Resumen de estimadores
+out.sum<-ej8d.sim$BUGSoutput$summary
+#Tabla resumen
+out.sum.t<-out.sum[grep("beta",rownames(out.sum)),c(1,3,7)]
+out.sum.t<-cbind(out.sum.t,apply(out$beta,2,prob))
+dimnames(out.sum.t)[[2]][4]<-"prob"
+print(out.sum.t)  Comentamos para evitar impresion de las 100 betas
+```
+
+&nbsp;
+
+```{r fig.width=6, fig.height=4,echo=TRUE, fig.align = "center",warning=F, error=F, message=F}
+#DIC
+out.dic<-ej8d.sim$BUGSoutput$DIC
+```
+
+### El DIC del modelo con ordenada dinamica y con pendientes estaticas es:
+
+```{r fig.width=6, fig.height=4,echo=TRUE, fig.align = "center",warning=F, error=F, message=F}
+#DIC
+print(out.dic)
+```
+
+&nbsp;
+
+Predicciones:
+
+```{r fig.width=6, fig.height=4,echo=TRUE, fig.align = "center",warning=F, error=F, message=F}
+out.yf<-out.sum[grep("yf1",rownames(out.sum)),]
+y<-data$y
+ymin<-min(y,out.yf[,c(1,3,7)])
+ymax<-max(y,out.yf[,c(1,3,7)])
+
+#x1 vs. y
+x<-data$x1
+par(mfrow=c(1,1))
+plot(x,y,type="p",col="grey50",ylim=c(ymin,ymax))
+points(x,out.yf[,1],col=2,pch=16,cex=0.5)
+segments(x,out.yf[,3],x,out.yf[,7],col=2)
+```
+
+&nbsp;
+
+
+```{r fig.width=6, fig.height=4,echo=TRUE, fig.align = "center",warning=F, error=F, message=F}
+#x2 vs. y
+x<-data$x2
+par(mfrow=c(1,1))
+plot(x,y,type="p",col="grey50",ylim=c(ymin,ymax))
+points(x,out.yf[,1],col=2,pch=16,cex=0.5)
+segments(x,out.yf[,3],x,out.yf[,7],col=2)
+```
+
+&nbsp;
+
+```{r fig.width=6, fig.height=4,echo=TRUE, fig.align = "center",warning=F, error=F, message=F}
+#x3 vs. y
+x<-data$x3
+par(mfrow=c(1,1))
+plot(x,y,type="p",col="grey50",ylim=c(ymin,ymax))
+points(x,out.yf[,1],col=2,pch=16,cex=0.5)
+segments(x,out.yf[,3],x,out.yf[,7],col=2)
+#t vs. y
+x<-mercado$Tiempo
+par(mfrow=c(1,1))
+plot(x,y,type="p",col="grey50",ylim=c(ymin,ymax))
+points(x,out.yf[,1],col=2,pch=16,cex=0.5)
+segments(x,out.yf[,3],x,out.yf[,7],col=2)
+```
+
+
+### Conclusiones:
+
+Observamos que al cambiar el modelo con la ordenada dinamica y pendientes  estaticas, se ajusta mejor a las salidas del modelo respecto a los resultados del modelo c). La `beta` en el modelo estatico nos dice el cambio en el valor esperado de la repsuesta. El impatco depende de las unidades de medida. Aunque el DIC es muy diferente, observamos que las predicciones son muy similareas en ambos ejercicios. Por lo que en un caso real lo que podriamos observar es un ejemplo con diferentes datos.
+
+
+
+
+
+

@@ -1,0 +1,63 @@
+---
+title: "Normal y Gamma"
+author: "Ricardo Lastra - 160167"
+date: "29 de agosto de 2017"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+###NORMAL Y GAMMA EJERCICIO 7. UTILIDAD DE PROYECTO
+
+&nbsp;
+
+####Dist Normal
+
+```{r }
+x <- seq(-10,100,,100)
+mu <- 39
+sig <- 14.81
+fx <- dnorm(x,mu,sig) 
+plot(x,fx,type="l",ylim = c(0,max(fx)+0.01))
+abline(v=0,col=2,h=0)
+```
+
+&nbsp;
+
+```{r }
+#Funcion para convertir  parametros mu y sig en alpha y beta (limites 0,1  y 0,05^2 respectivamente)
+#Opcion 1
+estBetaParams <- function(mu, sig) {
+  alpha <- ((1 - mu) / sig - 1 / mu) * mu ^ 2
+  beta <- alpha * (1 / mu - 1)
+  return(params = list(alpha = alpha, beta = beta))
+}
+
+#Opcion 2 que da el mismo resultado
+estBetaParams <- function(mu, sig) {
+  alpha <- -(mu * (sig + (mu ^ 2 - mu))) / sig
+  beta <- ((sig + (mu ^ 2 - mu)) * (mu -1))/ sig
+  return(params = list(alpha = alpha, beta = beta))
+}
+```
+
+&nbsp;
+
+
+&nbsp;
+
+
+####Dist Gamma
+
+```{r }
+alpha <- 49
+fx2 <- pgamma(x, alpha, lower.tail = FALSE)
+plot(x,fx2,type="l", ylab="fx")
+par(new=TRUE)
+plot(x,fx,type="l", ylab="fx")
+abline(v=0,col=2,h=0)
+```

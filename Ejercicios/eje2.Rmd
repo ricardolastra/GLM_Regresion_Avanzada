@@ -1,0 +1,143 @@
+---
+title: "Ejercicio 2"
+author: "Ricardo Lastra - 160167"
+date: "10 de Noviembre de 2017"
+output:
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+library(mrbsizeR)
+```
+
+&nbsp;
+
+#### EJERCICIO 2
+
+Las utilidades mensuales de una compañía tienen una distribución
+N(,
+2
+). Suponga que una muestra de 10 meses de esta compañía dio
+como resultado las siguientes utilidades: (212, 207, 210, 196, 223, 193,
+196, 210, 202, 221).
+a) La incertidumbre sobre la utilidad promedio anual  se puede
+representar por una distribución N(200,40), y la incertidumbre de la
+desviación estándar de las utilidades mensuales se puede representar
+mediante una distribución Ga(10,1). Mediante la distribución
+posterior estima  y 
+2
+.
+b) Utilizando una distribución inicial no informativa, estima mediante
+la correspondiente distribución inicial  y 
+2
+. 
+
+&nbsp;
+
+#### INCISO a) y b)
+
+&nbsp;
+
+```{r fig.width=6, fig.height=4,echo=TRUE, fig.align = "center", warning=F, error=F, message=F}
+#By Ricardo Lastra
+#Usamos en este ejercicio R2Jags
+#install.packages("R2jags")
+library(R2jags)
+
+wdir<-getwd()
+setwd(wdir)
+
+#-Reading data-
+utilidad<-c(212, 207, 210,
+            196, 223, 193,
+            196, 210, 202, 221)
+n<-length(utilidad)
+
+#-Defining data-
+data<-list("n"=n,"x"=utilidad)
+
+#-Defining inits-
+inits<-function(){list(mu=0,sig=1,x1=0)}
+
+#-Selecting parameters to monitor-
+parameters<-c("mu","sig","x1")
+```
+
+Notas:
+
+Objetivos del modelo de regresion. Utilizar la informacion de las variables "x's"  y "y's" observadas para estimar los parametros del modelo.
+
+Parametros son en este caso theta.
+
+Queremos estimar los parametros para determinar si una de las variables explicativas tiene un efecto significativo sobre mis respuestas. Los coeficientes significativos deben ser distintos de "0". Para esto hacemos pruebas de hipotesis (H).
+
+Otro objetivo de la regresion es predecir observaciones futuras.
+
+&nbsp;
+
+Algoritmo `mu ~ normal`:
+
+```{r fig.width=6, fig.height=4,echo=TRUE, fig.align = "center",warning=F, error=F, message=F}
+#JAGS
+ej2.sim<-jags(data,inits,parameters,model.file="Ej2.txt",
+              n.iter=5000,n.chains=1,n.burnin=500,n.thin=1)
+```
+
+####Usando:
+
+####Verosimilitud:
+
+
+
+####Para las priors:
+
+mu ~ dnorm(200,tau0)
+tau0<-1/40
+sig ~ dgamma(10,1)
+
+
+####Para las predictivas:
+
+
+
+&nbsp;
+
+```{r fig.width=6, fig.height=4,echo=TRUE, fig.align = "center",warning=F, error=F, message=F}
+out<-ej2.sim$BUGSoutput$sims.list
+z<-out$x1
+par(mfrow=c(2,2))
+plot(z,type="l")
+plot(cumsum(z)/(1:length(z)),type="l")
+hist(z,freq=FALSE)
+acf(z)
+```
+
+
+&nbsp;
+
+```{r fig.width=6, fig.height=4,echo=TRUE, fig.align = "center",warning=F, error=F, message=F}
+out.sum<-ej2.sim$BUGSoutput$summary
+print(out.sum)
+```
+
+&nbsp;
+
+```{r fig.width=6, fig.height=4,echo=TRUE, fig.align = "center",warning=F, error=F, message=F}
+#DIC
+out.dic<-ej2.sim$BUGSoutput$DIC
+print(out.dic)
+```
+
+
+&nbsp;
+
+### Conclusiones:
+
+ 
+
+
+

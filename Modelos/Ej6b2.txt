@@ -1,0 +1,34 @@
+model
+{
+#Likelihood
+for (i in 1:n) {
+#Neg Binomial  
+#*****TAREA PONER UNA NORMAL, CUIDADO CON LO SIGUIENTE:
+#*****CON CONCLUSIONES PARA LA CLASE DEL 25
+#	y[i] ~ dnegbin(p[i],r)
+#	logit(p[i])<-beta[1]+beta[2]*step(x[i]-tau)
+#	mu[i]<-r*(1-p[i])/p[i]
+#Poisson
+#	y[i] ~ dpois(mu[i])
+#	log(mu[i])<-beta[1]+beta[2]*step(x[i]-tau)
+#Normal
+	y[i] ~ dnorm(mu[i],tau)
+	mu[i]<-beta[1]+beta[2]*step(x[i]-tau)
+	}
+#Priors 
+for (j in 1:2) { beta[j] ~ dnorm(0,0.0001) }
+#Neg Binomial
+aux ~ dpois(50)
+#r <- aux + 1
+aux2 ~ dcat(a[]) #distribucion discreta "dcat" y con la a[] es uniforme
+tau <- aux2 + 2005
+for (j in 1:n) { a[j]<- 1/n}
+#Prediction 1
+#Neg Binomial
+#for (i in 1:n) { yf1[i] ~ dnegbin(p[i],r) }
+#Poisson
+#for (i in 1:n) { yf1[i] ~ dpois(mu[i]) }
+#Normal 
+for (i in 1:n) { yf1[i] ~ dnorm(mu[i],tau) }
+}
+

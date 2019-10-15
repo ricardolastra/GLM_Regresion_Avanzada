@@ -1,0 +1,17 @@
+model
+{
+#Likelihood #la beta[1] es la ordenada al origen, necesitamos mas observaciones o una dist inicial menos informativa
+#EXAMEN VIERNES 10 DE NOVIEMBRE 16-19 hrs Salon B-3  1:27:00 dijo la fecha del FINAL
+#https://en.wikipedia.org/wiki/Levenshtein_distance
+for (i in 1:n) {
+	y[i] ~ dnorm(mu[i],tau)
+	mu[i]<-beta[1]+beta[2]*x[i]+beta[3]*pow(x[i],2)+beta[4]*t[i]+beta[5]*pow(t[i],2)
+	}
+#Priors 
+for (j in 1:5) { beta[j] ~ dnorm(0,0.0001) }
+tau ~ dgamma(0.0001,0.0001)
+
+#Prediction 1
+for (i in 1:n) { yf1[i] ~ dnorm(mu[i],tau) }
+
+}

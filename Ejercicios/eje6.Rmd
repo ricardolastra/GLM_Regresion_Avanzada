@@ -1,0 +1,214 @@
+---
+title: "Ejercicio 6"
+author: "Ricardo Lastra"
+date: "25 de octubre de 2017"
+output:
+  html_document: default
+---
+
+```{r, include=FALSE}
+library(mrbsizeR)
+```
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+&nbsp;
+
+#### EJERCICIO 6
+
+En el mismo contexto del problema anterior, supongamos
+ahora que la compañía de seguros está interesada en modelar el número
+total de desastres (Yt) que ocurren en la mina. Se cuenta con N112
+observaciones durante los años 1851 a 1962. Se proponen tres modelos: 
+
+a) Modelo con tasa variable en función del tiempo: 
+
+$$
+Y_{t}\mu_{t} \thicksim Po(\mu_{t})\\
+log(\mu_{t}) = \beta_0 + \beta_1 t\\
+con\  \beta_0 \thicksim N(0,0.001)
+$$
+
+&nbsp;
+
+b) Modelo con tasa constante en dos períodos: Se cree que la tasa
+promedio de desastres es constante, pero que en el siglo XX la tasa ha
+disminuido. Esto se traduce en el siguiente modelo: 
+
+$$
+Y_{t}|\mu_{t} \thicksim Po(\mu_{t})\\
+log(\mu_{t}) = \beta_0 + \beta_1 I(t>=\tau)\\
+con\  \beta_0 \thicksim N(0,0.001),\ \beta_1 \thicksim N(0,0.001)\ y\ \tau \thicksim U{1,...,N}\\
+$$
+&nbsp;
+
+c) Modelo Poisson dinámico:
+
+$$
+Observación:\ Y_{t}|\mu_{t} \thicksim Po(\mu_{t}),\ log\mu_{t}=\eta_{t}\\
+Evolución: \eta_{t}+\eta_{t-1}+\omega_{t},\omega_{t}\thicksim N(0,W^{-1})\\
+con\ \ \eta_{t}\thicksim N(0,0.0001)\ y\ W^{-1}\thicksim Ga(0.01,0.01)
+$$
+
+&nbsp;
+
+d) Modelo Normal`(tarea)`:
+
+$$
+Observación:\ Y_{t}|\mu_{t} \thicksim N(\mu_{i},\tau_{i}),\
+\mu_{i}=\eta_{i}\\
+con\ \ \eta_{t}\thicksim N(0,0.0001)\
+$$
+&nbsp;
+
+### Realizar modelo con dist. *Normal*
+
+&nbsp;
+
+```{r fig.width=6, fig.height=4,echo=TRUE, fig.align = "center", warning=F, error=F, message=F}
+#By Ricardo Lastra
+#Usamos en este ejercicio R2Jags
+#install.packages("R2jags")
+library(R2jags)
+
+wdir<-getwd()
+setwd(wdir)
+
+#-------Funciones utiles----------
+prob <- function(x){
+  out <- min(length(x[x>0])/length(x),length(x[x<0])/length(x))
+  out
+}
+
+#--- Ejercicio 6 ---
+#-Reading data-
+desastres<-read.table("http://allman.rhon.itam.mx/~lnieto/index_archivos/desastres.txt",header=TRUE)
+n<-nrow(desastres)
+plot(desastres,type="l")
+plot(desastres[2:n,2]-desastres[1:(n-1),2],type="l")
+plot(log(desastres[2:n,2])-log(desastres[1:(n-1),2]),type="l")
+
+#-Defining data-
+data<-list("n"=n,"y"=desastres$No.Desastres,"x"=desastres$Anho) 
+```
+
+&nbsp;
+
+Modelo:
+
+```{r fig.width=6, fig.height=4,echo=TRUE, fig.align = "center",warning=F, error=F, message=F}
+#-Defining inits-
+inits<-function(){list(beta=rep(0,2),aux2=1,yf1=rep(1,n))}
+#Parametros
+parameters<-c("beta","yf1","mu","tau")
+#Runing code- Usamos JAGS
+ej6b.sim<-jags(data,inits,parameters,model.file="Ej6t.txt",
+               n.iter=50000,n.chains=1,n.burnin=5000,n.thin=1)
+```
+
+Usando:
+
+model
+{
+#Likelihood
+for (i in 1:n) {
+#Normal
+	y[i] ~ dnorm(mu[i],tau)
+	mu[i]<-beta[1]+beta[2]*step(x[i]-tau)
+	}
+#Priors 
+for (j in 1:2) { beta[j] ~ dnorm(0,0.001) }
+aux2 ~ dcat(a[]) #distribucion discreta "dcat" y con la a[] es uniforme
+tau <- aux2 + 1850
+for (j in 1:n) { a[j]<- 1/n}
+#Prediction 1
+#Normal 
+for (i in 1:n) { yf1[i] ~ dnorm(mu[i],tau) }
+}
+
+
+&nbsp;
+
+```{r fig.width=6, fig.height=4,echo=TRUE, fig.align = "center",warning=F, error=F, message=F}
+out<-ej6b.sim$BUGSoutput$sims.list
+
+z<-out$beta[,1]
+par(mfrow=c(2,2))
+plot(z,type="l")
+plot(cumsum(z)/(1:length(z)),type="l")
+hist(z,freq=FALSE)
+acf(z)
+```
+
+&nbsp;
+
+```{r fig.width=6, fig.height=4,echo=TRUE, fig.align = "center",warning=F, error=F, message=F}
+z<-out$beta
+par(mfrow=c(1,1))
+plot(z)
+```
+
+&nbsp;
+
+```{r fig.width=6, fig.height=4,echo=TRUE, fig.align = "center",warning=F, error=F, message=F}
+#Resumen de estimadores
+out.sum<-ej6b.sim$BUGSoutput$summary
+#Tabla resumen
+out.sum.t<-out.sum[grep("beta",rownames(out.sum)),c(1,3,7)]
+out.sum.t<-cbind(out.sum.t,apply(out$beta,2,prob))
+dimnames(out.sum.t)[[2]][4]<-"prob"
+print(out.sum.t)
+```
+
+&nbsp;
+
+```{r fig.width=6, fig.height=4,echo=TRUE, fig.align = "center",warning=F, error=F, message=F}
+#DIC
+out.dic<-ej6b.sim$BUGSoutput$DIC
+print(out.dic)
+```
+
+&nbsp;
+
+Predicciones:
+
+```{r fig.width=6, fig.height=4,echo=TRUE, fig.align = "center",warning=F, error=F, message=F}
+#Predictions
+out.yf<-out.sum[grep("yf1",rownames(out.sum)),]
+ymin<-min(desastres[,2],out.yf[,c(1,3,7)])
+ymax<-max(desastres[,2],out.yf[,c(1,3,7)])
+
+par(mfrow=c(1,1))
+plot(desastres,type="l",col="grey80",ylim=c(ymin,ymax))
+lines(desastres[,1],out.yf[,1],lwd=2,col=2)
+lines(desastres[,1],out.yf[,3],lty=2,col=1)
+lines(desastres[,1],out.yf[,7],lty=2,col=1)
+lines(desastres[,1],out.yf[,5],lwd=2,col=4)
+```
+
+&nbsp;
+
+
+Medias:
+
+```{r fig.width=6, fig.height=4,echo=TRUE, fig.align = "center",warning=F, error=F, message=F}
+#Medias
+out.mu<-out.sum[grep("mu",rownames(out.sum)),]
+par(mfrow=c(1,1))
+plot(desastres,type="l",col="grey80")
+lines(desastres[,1],out.mu[,1],lwd=2,col=2)
+lines(desastres[,1],out.mu[,3],lty=2,col=4)
+lines(desastres[,1],out.mu[,7],lty=2,col=4)
+```
+
+&nbsp;
+
+### Conclusiones:
+
+    Podmeos concluir que el modelo con dist. Normal se realiza sin suaviszar y de una forma muy ajustada pasa por las X`s brindandonos un desenlace uniforme hacia las ultimas observaciones, lo que nos da predicciones constantes hacia nuevas observaciones (o linealmente horizontales).
+    Se observa en la grafica de predicciones un brinco que se parece mucho a los datos observados, lo que nos indica que el modelo ha ajustado bien.
+    Me llama la atencion un DIC tan alto, que segun en clase era de hasta 3 digitos pero en el ejercicio anterior me dio un DIC de mas de 7 digitos.
+
+
+
